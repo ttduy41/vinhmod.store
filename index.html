@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHOP MENU THẬP CẨM ADR&PC | vinhmodlag.store</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --primary: #00f2ff; --accent: #ff0055; --bg: #0d1117; --card: #161b22; --text: #c9d1d9; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+        
+        /* AUTH SYSTEM */
+        #auth-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 10000; }
+        .auth-box { background: var(--card); padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; border: 1px solid #30363d; }
+        .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #333; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #8b949e; }
+        .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); font-weight: bold; }
+        
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        .btn-main { background: var(--primary); color: #000; }
+        .btn-google { background: white; color: #000; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .step { display: none; } .step.active { display: block; }
+
+        /* DASHBOARD */
+        header { background: var(--card); padding: 15px 5%; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
+        .balance-tag { background: #238636; padding: 6px 15px; border-radius: 20px; font-weight: bold; color: white; }
+        .container { max-width: 1100px; margin: auto; padding: 20px; }
+
+        /* PRODUCT CARDS */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .card { background: var(--card); padding: 25px; border-radius: 12px; border: 1px solid #30363d; position: relative; }
+        .stock { position: absolute; top: 15px; right: 15px; font-size: 11px; color: var(--primary); background: #000; padding: 4px 8px; border-radius: 5px; border: 1px solid var(--primary); }
+        .price { font-size: 26px; color: var(--primary); font-weight: 800; margin: 15px 0; }
+        .time-select { display: flex; gap: 5px; margin-bottom: 15px; }
+        .t-btn { flex: 1; padding: 8px; font-size: 12px; background: #0d1117; color: white; border: 1px solid #30363d; border-radius: 5px; cursor: pointer; }
+        .t-btn.active { background: var(--primary); color: #000; font-weight: bold; }
+
+        /* ADMIN PANEL */
+        #admin-panel { display: none; background: #1c0a0a; border: 2px dashed var(--accent); padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-overlay">
+        <div class="auth-box">
+            <h2 style="text-align:center; color: var(--primary); margin-top:0;">vinhmodlag.store</h2>
+            <div class="auth-tabs">
+                <div class="tab active" id="tab-login" onclick="setAuth('login')">Đăng Nhập</div>
+                <div class="tab" id="tab-reg" onclick="setAuth('reg')">Đăng Ký</div>
+            </div>
+
+            <div id="form-login" class="step active">
+                <input type="text" id="l-user" placeholder="Email hoặc SĐT">
+                <input type="password" id="l-pass" placeholder="Mật khẩu">
+                <button class="btn btn-main" onclick="doLogin()">VÀO TÀI KHOẢN</button>
+            </div>
+
+            <div id="form-reg" class="step">
+                <div id="reg-s1" class="step active">
+                    <p style="font-size: 12px; color: #8b949e;">BƯỚC 1: NHẬP GMAIL HOẶC SĐT</p>
+                    <input type="text" id="r-id" placeholder="Nhập Gmail/SĐT">
+                    <button class="btn btn-main" onclick="goReg(2)">TIẾP THEO</button>
+                </div>
+                <div id="reg-s2" class="step">
+                    <p style="font-size: 12px; color: #8b949e;">BƯỚC 2: MẬT KHẨU</p>
+                    <input type="password" id="r-p1" placeholder="Đặt mật khẩu">
+                    <input type="password" id="r-p2" placeholder="Xác nhận mật khẩu">
+                    <button class="btn btn-main" onclick="doRegister()">HOÀN THÀNH ĐĂNG KÝ</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 15px 0; font-size: 12px; color: #484f58;">HOẶC</div>
+            <button class="btn btn-google" onclick="doGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Chọn tài khoản Google
+            </button>
+        </div>
+    </div>
+
+    <div id="main-shop" style="display: none;">
+        <header>
+            <h3 style="margin:0; color:var(--primary)">MENU THẬP CẨM</h3>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="balance-tag">💰 <span id="u-bal">0</span>đ</div>
+                <button onclick="logout()" style="background:none; border:none; color:var(--accent); font-weight:bold; cursor:pointer;">THOÁT</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <div id="admin-panel">
+                <h3 style="color: var(--accent); margin-top:0;">🛠 BẢNG ĐIỀU KHIỂN HOÀNG VINH</h3>
+                <div id="admin-inputs"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 30px; width: 100%; box-sizing: border-box;">
+                <h3 style="color: #238636; margin-top:0;">💳 NẠP THẺ CÀO (Cộng tiền tự động)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                    <select id="c-type"><option>VIETTEL</option><option>ZING</option><option>MOBIFONE</option></select>
+                    <select id="c-val"><option value="10000">10.000đ</option><option value="50000">50.000đ</option><option value="100000">100.000đ</option></select>
+                    <input type="text" id="c-seri" placeholder="Số Seri">
+                    <input type="text" id="c-pin" placeholder="Mã thẻ (PIN)">
+                </div>
+                <button class="btn btn-main" onclick="naptien()">NẠP NGAY</button>
+            </div>
+
+            <div class="grid" id="product-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // CẤU HÌNH FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSy...", 
+            authDomain: "vinhmodlag.firebaseapp.com",
+            databaseURL: "https://vinhmodlag.firebaseio.com",
+            projectId: "vinhmodlag",
+            appId: "1:xxx:web:xxx"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let isAdmin = false;
+        let uKey = "";
+        const catalog = [
+            { id: 'acc', name: 'ACC CLONE LV 5 FREEFIRE', isTime: false },
+            { id: 'br', name: 'MENU BR MOD AD&PC', isTime: true },
+            { id: 'lag', name: 'FAKE LAG ADR', isTime: true }
+        ];
+
+        // --- HỆ THỐNG ĐĂNG NHẬP / ĐĂNG KÝ ---
+        function setAuth(m) {
+            document.getElementById('tab-login').className = 'tab ' + (m==='login'?'active':'');
+            document.getElementById('tab-reg').className = 'tab ' + (m==='reg'?'active':'');
+            document.getElementById('form-login').className = 'step ' + (m==='login'?'active':'');
+            document.getElementById('form-reg').className = 'step ' + (m==='reg'?'active':'');
+        }
+
+        function goReg(s) {
+            document.getElementById('reg-s1').className = 'step ' + (s===1?'active':'');
+            document.getElementById('reg-s2').className = 'step ' + (s===2?'active':'');
+        }
+
+        function doRegister() {
+            const id = document.getElementById('r-id').value;
+            const p1 = document.getElementById('r-p1').value;
+            const p2 = document.getElementById('r-p2').value;
+            if(p1 !== p2) return alert("Mật khẩu không khớp!");
+            
+            const email = id.includes('@') ? id : id + "@vinh.com";
+            auth.createUserWithEmailAndPassword(email, p1).then(() => {
+                alert("Đăng ký thành công! Vui lòng đăng nhập.");
+                setAuth('login');
+            }).catch(e => alert(e.message));
+        }
+
+        function doLogin() {
+            const u = document.getElementById('l-user').value;
+            const p = document.getElementById('l-pass').value;
+
+            if(u === "HoangVinh" && p === "HV0308hv") {
+                isAdmin = true; uKey = "admin_master";
+                loadShop("Hoàng Vinh (Admin)");
+                return;
+            }
+            const email = u.includes('@') ? u : u + "@vinh.com";
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => {
+                return auth.signInWithEmailAndPassword(email, p);
+            }).catch(e => alert("Sai tài khoản hoặc mật khẩu!"));
+        }
+
+        function doGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            auth.signInWithPopup(provider);
+        }
+
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                uKey = user.uid;
+                loadShop(user.email);
+            }
+        });
+
+        function logout() { auth.signOut().then(() => location.reload()); }
+
+        // --- LOGIC CỬA HÀNG ---
+        function loadShop(name) {
+            document.getElementById('auth-overlay').style.display = 'none';
+            document.getElementById('main-shop').style.display = 'block';
+            if(isAdmin) document.getElementById('admin-panel').style.display = 'block';
+
+            db.ref('users/' + uKey + '/bal').on('value', s => {
+                document.getElementById('u-bal').innerText = (s.val() || 0).toLocaleString();
+            });
+            render();
+        }
+
+        function render() {
+            const grid = document.getElementById('product-grid');
+            const adm = document.getElementById('admin-inputs');
+            grid.innerHTML = ""; adm.innerHTML = "";
+
+            catalog.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="stock">Còn lại: <span id="s-${item.id}">0</span></div>
+                    <h3 style="margin-top:0">${item.name}</h3>
+                    ${item.isTime ? `<div class="time-select">
+                        <button class="t-btn active" onclick="selT('${item.id}',1,this)">1 Ngày</button>
+                        <button class="t-btn" onclick="selT('${item.id}',7,this)">7 Ngày</button>
+                        <button class="t-btn" onclick="selT('${item.id}',30,this)">30 Ngày</button>
+                    </div>` : '<p style="color:#555;font-size:12px">Sở hữu vĩnh viễn</p>'}
+                    <div class="price" id="p-${item.id}">0đ</div>
+                    <button class="btn btn-main" onclick="buy('${item.id}')">MUA NGAY</button>
+                `;
+                grid.appendChild(card);
+
+                if(isAdmin) {
+                    const row = document.createElement('div');
+                    row.style.padding = "10px"; row.style.borderBottom = "1px solid #333";
+                    row.innerHTML = `
+                        <b>${item.name}</b> | Kho: <input id="as-${item.id}" style="width:50px"> 
+                        ${item.isTime ? `1d: <input id="a1-${item.id}" style="width:60px">` : `Giá: <input id="af-${item.id}" style="width:80px">`}
+                        <button onclick="save('${item.id}', ${item.isTime})">Lưu</button>
+                    `;
+                    adm.appendChild(row);
+                }
+
+                db.ref('prods/' + item.id).on('value', s => {
+                    const d = s.val() || {p1:0, p7:0, p30:0, f:0, stock:0};
+                    window['sel_'+item.id] = 1;
+                    document.getElementById('s-'+item.id).innerText = d.stock;
+                    updateUI(item.id, d, item.isTime);
+                    if(isAdmin) {
+                        document.getElementById('as-'+item.id).value = d.stock;
+                        if(item.isTime) document.getElementById('a1-'+item.id).value = d.p1;
+                        else document.getElementById('af-'+item.id).value = d.f;
+                    }
+                });
+            });
+        }
+
+        function selT(id, d, btn) {
+            btn.parentElement.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active'); window['sel_'+id] = d;
+            db.ref('prods/' + id).once('value', s => updateUI(id, s.val(), true));
+        }
+
+        function updateUI(id, data, isTime) {
+            const p = isTime ? data['p'+window['sel_'+id]] : data.f;
+            document.getElementById('p-'+id).innerText = parseInt(p).toLocaleString() + "đ";
+        }
+
+        function save(id, isTime) {
+            const s = document.getElementById('as-'+id).value;
+            const d = isTime ? { stock: s, p1: document.getElementById('a1-'+id).value, p7: 50000, p30: 150000 } : { stock: s, f: document.getElementById('af-'+id).value };
+            db.ref('prods/' + id).update(d).then(() => alert("Đã lưu!"));
+        }
+
+        function naptien() {
+            const pin = document.getElementById('c-pin').value;
+            const val = parseInt(document.getElementById('c-val').value);
+            if(!pin) return;
+            db.ref('used_cards/' + pin).once('value', s => {
+                if(s.exists()) return alert("Thẻ đã dùng!");
+                db.ref('used_cards/' + pin).set(true);
+                db.ref('users/' + uKey + '/bal').once('value', v => {
+                    db.ref('users/' + uKey + '/bal').set((v.val() || 0) + val);
+                    alert("Nạp thành công " + val.toLocaleString() + "đ");
+                });
+            });
+        }
+
+        function buy(id) {
+            if(isAdmin) return alert("Admin không cần mua!");
+            db.ref('prods/' + id).once('value', s => {
+                const data = s.val();
+                if(parseInt(data.stock) <= 0) return alert("Hết hàng!");
+                const cost = catalog.find(x=>x.id===id).isTime ? data['p'+window['sel_'+id]] : data.f;
+                db.ref('users/' + uKey + '/bal').once('value', v => {
+                    const b = v.val() || 0;
+                    if(b >= parseInt(cost)) {
+                        db.ref('users/' + uKey + '/bal').set(b - parseInt(cost));
+                        db.ref('prods/' + id + '/stock').set(parseInt(data.stock) - 1);
+                        alert("Mua thành công! Nhắn Admin để lấy key/acc.");
+                    } else alert("Không đủ tiền!");
+                });
+            });
+        }
+    </script>
+</body>
+</html>
